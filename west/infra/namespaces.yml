@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    kubernetes.io/metadata.name: west-istio-system
+  name: west-istio-system
+spec:
+  finalizers:
+  - kubernetes
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    kubernetes.io/metadata.name: west-mesh-member
+  name: west-mesh-member
+spec:
+  finalizers:
+  - kubernetes

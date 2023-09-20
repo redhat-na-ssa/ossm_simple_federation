@@ -1,0 +1,20 @@
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: vs-kube-info-standard
+  namespace: east-mesh-member
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - east-istio-system/ootb-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /info
+    route:
+    - destination:
+        host: kube-info
+        port:
+          number: 8080

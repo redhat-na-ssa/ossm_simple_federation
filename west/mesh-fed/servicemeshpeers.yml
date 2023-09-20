@@ -1,0 +1,29 @@
+# Joins two meshes together
+kind: ServiceMeshPeer
+apiVersion: federation.maistra.io/v1
+metadata:
+  name: east
+  namespace: west-istio-system
+spec:
+
+  remote:
+    addresses:
+    #- 192.168.1.201
+    - ingress-west.east-istio-system.svc.cluster.local
+    discoveryPort: 8188
+    servicePort: 15443
+    
+  gateways:
+    ingress:
+      name: ingress-east
+    egress:
+      name: egress-east
+  security:
+    trustDomain: east.local
+
+    # The "clientID" field is used to identify the service account that will be used to authenticate the peer ( when it communicates with other services in the service mesh )
+    clientID: east.local/ns/east-istio-system/sa/egress-west-service-account
+
+    certificateChain:
+      kind: ConfigMap
+      name: east-ca-root-cert

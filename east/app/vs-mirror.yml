@@ -1,0 +1,31 @@
+# Mirror HTTP traffic to a another destination in addition to forwarding the requests to the intended destination. 
+# Mirrored traffic is on a best effort basis where the sidecar/gateway will not wait for the mirrored cluster to respond before returning the response from the original destination. 
+# Statistics will be generated for the mirrored destination.
+
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: vs-mirror
+  namespace: east-mesh-member
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - east-istio-system/ootb-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /info
+
+    # oc -n east-istio-system get importedservicesets west -o json | jq -r .status.importedServices[].localService.hostname
+    mirror:
+      host: kube-info-west.east-mesh-member.svc.west-imports.local
+    mirrorPercentage: 
+      value: 100.0
+  
+    route:
+    - destination:
+        host: kube-info
+        port:
+          number: 8080
+      weight: 100

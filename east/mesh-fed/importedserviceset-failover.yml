@@ -1,0 +1,25 @@
+apiVersion: federation.maistra.io/v1
+kind: ImportedServiceSet
+metadata:
+ name: west
+ namespace: east-istio-system
+spec:
+ importRules:
+
+   # if true: 
+   #  creates a combined set of endpoints that includes both a local service and remote service
+   #  the domain suffix will be svc.cluster.local, like your normal local services. 
+   #  if you already have a local service with this name, the remote endpoint will be added to this service’s endpoints and you load balance across your local and imported services
+   - importAsLocal: true
+
+     nameSelector:
+       alias:
+         name: kube-info
+         namespace: east-mesh-member
+       name: kube-info
+       namespace: west-mesh-member
+     type: NameSelector
+
+ #Locality within which imported services should be associated.
+ locality:
+   region: west-fed

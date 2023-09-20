@@ -1,0 +1,104 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: east-fed
+  namespace: east-istio-system
+spec:
+  addons:
+    grafana:
+      enabled: true
+    jaeger:
+      install:
+        storage:
+          type: Memory
+    kiali:
+      enabled: true
+    prometheus:
+      enabled: true
+  policy:
+    type: Istiod
+  profiles:
+  - default
+  telemetry:
+    type: Istiod
+  tracing:
+    sampling: 10000
+    type: Jaeger
+  version: v2.4
+  security:
+    manageNetworkPolicy: true
+
+    # This value is used when configuring mesh federation in the ServiceMeshPeer resource.
+    trust:
+      domain: east.local
+
+  gateways:
+    egress:
+      runtime:
+        container:
+          resources:
+            limits:
+              cpu: 500m
+    ingress:
+      runtime:
+        container:
+          resources:
+            limits:
+              cpu: 500m
+
+    # For a federated mesh, create additional ingress/egress gateways, to facilitate service discovery between federated meshes, communication between federated meshes, and to manage traffic flow between service meshes (East-West traffic).
+    # Define an additional egress gateway for each mesh peer in the federation.
+    additionalEgress:
+      egress-west:
+        runtime:
+          deployment:
+            autoScaling:
+              enabled: false
+          container:
+            resources:
+              limits:
+                cpu: 500m
+        enabled: true
+
+        # also want to view endpoints in Kiali associated with the other mesh network
+        requestedNetworkView:
+        - west-mesh-network
+
+        routerMode: sni-dnat
+        service:
+          metadata:
+            labels:
+              federation.maistra.io/egress-for: egress-west
+          ports:
+          - port: 15443
+            name: tls
+          - port: 8188
+            name: http-discovery
+
+    # Define an additional ingress gateway gateway for each mesh peer in the federation.
+    additionalIngress:
+      ingress-west:
+        enabled: true
+        routerMode: sni-dnat
+        runtime:
+          container:
+            resources:
+              limits:
+                cpu: 500m
+          deployment:
+            autoScaling:
+              enabled: false
+
+        service:
+          # Altnerative: ClusterIP .... in which case an OCP route is created
+          #type: LoadBalancer
+          type: ClusterIP
+
+          metadata:
+            labels:
+              federation.maistra.io/ingress-for: ingress-west
+          ports:
+          - port: 15443
+            name: tls
+          - port: 8188
+            name: https-discovery
