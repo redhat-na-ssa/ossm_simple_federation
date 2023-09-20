@@ -227,6 +227,7 @@ $ oc delete -k west/mesh-fed/ --ignore-not-found=true \
 . link:https://www.opensourcerers.org/2022/01/24/getting-started-with-openshift-servicemesh-federation/[Getting started with OpenShift ServiceMesh Federation; Jan 2022]
 . link:https://cloud.redhat.com/blog/a-guide-to-creating-a-true-hybrid/multi-cloud-architecture-with-ossm-federation[Multi Cloud Architecture w/ OSSM Federation]
 . link:https://istio.io/latest/blog/2021/external-locality-failover/[Configuring Failover for External Services; Jun 2021]
+. link:https://docs.google.com/presentation/d/1RBIS9ggRIM7aWNGLGmCfB9N-b7MjrGKn9nGma9RwM0E/edit#slide=id.gcfb7c4abeb_0_44[Corresponding presentation]
 
 == Appendix
 
