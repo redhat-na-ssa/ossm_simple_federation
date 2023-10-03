@@ -4,6 +4,11 @@ metadata:
   name: east-fed
   namespace: east-istio-system
 spec:
+
+  techPreview:
+    gatewayAPI:
+      enabled: true
+
   addons:
     grafana:
       enabled: true
