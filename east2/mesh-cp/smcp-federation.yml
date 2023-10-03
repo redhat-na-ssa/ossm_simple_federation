@@ -50,7 +50,7 @@ spec:
     # For a federated mesh, create additional ingress/egress gateways, to facilitate service discovery between federated meshes, communication between federated meshes, and to manage traffic flow between service meshes (East-West traffic).
     # Define an additional egress gateway for each mesh peer in the federation.
     additionalEgress:
-      egress-west:
+      egress-east:
         runtime:
           deployment:
             autoScaling:
@@ -63,13 +63,13 @@ spec:
 
         # also want to view endpoints in Kiali associated with the other mesh network
         requestedNetworkView:
-        - west-mesh-network
+        - east-mesh-network
 
         routerMode: sni-dnat
         service:
           metadata:
             labels:
-              federation.maistra.io/egress-for: egress-west
+              federation.maistra.io/egress-for: egress-east
           ports:
           - port: 15443
             name: tls
@@ -78,7 +78,7 @@ spec:
 
     # Define an additional ingress gateway gateway for each mesh peer in the federation.
     additionalIngress:
-      ingress-west:
+      ingress-east:
         enabled: true
         routerMode: sni-dnat
         runtime:
@@ -97,7 +97,7 @@ spec:
 
           metadata:
             labels:
-              federation.maistra.io/ingress-for: ingress-west
+              federation.maistra.io/ingress-for: ingress-east
           ports:
           - port: 15443
             name: tls

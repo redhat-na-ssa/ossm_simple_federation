@@ -1,8 +1,12 @@
+# Configures federated imported services. 
+# The name of the ImportedServiceSet resource must match the name of a ServiceMeshPeer resource defining the remote mesh from which the services will be imported.
+# This implies there will be at most one ImportedServiceSet resource per peer and control plane.
+
 apiVersion: federation.maistra.io/v1
 kind: ImportedServiceSet
 metadata:
- name: west
- namespace: east2-istio-system
+ name: east2
+ namespace: east-istio-system
 spec:
  importRules:
 
@@ -10,16 +14,12 @@ spec:
    #  creates a combined set of endpoints that includes both a local service and remote service
    #  the domain suffix will be svc.cluster.local, like your normal local services. 
    #  if you already have a local service with this name, the remote endpoint will be added to this service’s endpoints and you load balance across your local and imported services
-   - importAsLocal: true
+   - importAsLocal: false
 
      nameSelector:
        alias:
-         name: kube-info
-         namespace: east2-mesh-member
+         name: kube-info-east2
+         namespace: east-mesh-member
        name: kube-info
-       namespace: west-mesh-member
+       namespace: east2-mesh-member
      type: NameSelector
-
- #Locality within which imported services should be associated.
- locality:
-   region: west-fed

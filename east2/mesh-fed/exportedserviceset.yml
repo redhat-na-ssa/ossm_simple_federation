@@ -1,0 +1,17 @@
+kind: ExportedServiceSet
+apiVersion: federation.maistra.io/v1
+metadata:
+ # The name of the ExportedServiceSet must match the ServiceMeshPeer name
+ name: east
+
+ namespace: east2-istio-system
+spec:
+ exportRules:
+ - type: LabelSelector
+   labelSelector:
+     namespace: east2-mesh-member
+     selector:
+       matchLabels:
+         app.kubernetes.io/name: kube-info
+     alias:
+       namespace: east-mesh-member

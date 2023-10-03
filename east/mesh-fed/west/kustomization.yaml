@@ -5,4 +5,4 @@ commonAnnotations:
 resources:
 
 - servicemeshpeers.yml
-- exportedserviceset.yml
+- importedserviceset.yml

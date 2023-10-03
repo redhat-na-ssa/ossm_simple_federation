@@ -2,27 +2,31 @@
 kind: ServiceMeshPeer
 apiVersion: federation.maistra.io/v1
 metadata:
-  name: east
-  namespace: east2-istio-system
+
+  # Name will be used to identify the cluster to which imported services belong
+  name: east2
+
+  namespace: east-istio-system
 spec:
 
   remote:
     addresses:
-    - ingress-east2.east-istio-system.svc.cluster.local
+    #- 192.168.1.202
+    - ingress-east.east2-istio-system.svc.cluster.local
     discoveryPort: 8188
     servicePort: 15443
-    
+
   gateways:
     ingress:
-      name: ingress-east
+      name: ingress-east2
     egress:
-      name: egress-east
+      name: egress-east2
   security:
-    trustDomain: east.local
+    trustDomain: east2.local
 
     # The "clientID" field is used to identify the service account that will be used to authenticate the peer ( when it communicates with other services in the service mesh )
-    clientID: east.local/ns/east-istio-system/sa/egress-east2-service-account
+    clientID: east2.local/ns/east2-istio-system/sa/egress-east-service-account
 
     certificateChain:
       kind: ConfigMap
-      name: east-ca-root-cert
+      name: east2-ca-root-cert

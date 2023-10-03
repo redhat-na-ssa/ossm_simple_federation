@@ -2,8 +2,8 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: west-ca-root-cert
+  name: east-ca-root-cert
   namespace: east2-istio-system
 data:
   root-cert.pem: |-
-    {{WEST_MESH_CERT}}
+    {{EAST_MESH_CERT}}

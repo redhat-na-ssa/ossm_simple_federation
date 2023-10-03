@@ -17,9 +17,9 @@ spec:
     - uri:
         prefix: /info
 
-    # oc -n east-istio-system get importedservicesets west -o json | jq -r .status.importedServices[].localService.hostname
+    # oc -n east-istio-system get importedservicesets east2 -o json | jq -r .status.importedServices[].localService.hostname
     mirror:
-      host: kube-info-west.east-mesh-member.svc.west-imports.local
+      host: kube-info-east2.east-mesh-member.svc.east2-imports.local
     mirrorPercentage: 
       value: 100.0
   

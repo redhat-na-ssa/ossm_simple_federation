@@ -9,7 +9,7 @@
 
 == Set-up
 
-image::docs/images/simple-fed-setup.png[]
+
 
 === Common
 
@@ -17,7 +17,11 @@ image::docs/images/simple-fed-setup.png[]
 $ oc apply -k infra
 -----
 
-=== East
+=== East - East2
+
+image::docs/images/simple-fed-setup.png[]
+
+==== East
 
 . Service Mesh Control Plane:
 +
@@ -37,7 +41,7 @@ $ oc apply -k east/app
 $ curl -X GET http://$(oc get route istio-ingressgateway -n east-istio-system --template='{{.spec.host}}')/info
 -----
 
-=== East 2
+==== East2
 
 . Service Mesh Control Plane:
 +
@@ -81,16 +85,18 @@ $ curl -X GET http://$(oc get route istio-ingressgateway -n west-istio-system --
 
 == Federation:
 
+=== east - east2
+
 . Share istio root certificates between mesh tenants:
 +
 -----
-$ oc get cm istio-ca-root-cert -n west-istio-system -o yaml \
+$ oc get cm istio-ca-root-cert -n east2-istio-system -o yaml \
     | sed 's/namespace: .*/namespace: east-istio-system/' \
-    | sed 's/name: .*/name: west-ca-root-cert/' | oc apply -n east-istio-system -f -
+    | sed 's/name: .*/name: east2-ca-root-cert/' | oc apply -n east-istio-system -f -
 
 $ oc get cm istio-ca-root-cert -n east-istio-system -o yaml \
-    | sed 's/namespace: .*/namespace: west-istio-system/' \
-    | sed 's/name: .*/name: east-ca-root-cert/' | oc apply -n west-istio-system -f -
+    | sed 's/namespace: .*/namespace: east2-istio-system/' \
+    | sed 's/name: .*/name: east-ca-root-cert/' | oc apply -n east2-istio-system -f -
 -----
 +
 NOTE: Alternative approach described in Appendix section.
@@ -98,21 +104,21 @@ NOTE: Alternative approach described in Appendix section.
 . east:  Apply `ServiceMeshPeer` & `ImportedServiceSet`
 +
 -----
-$ oc apply -k east/mesh-fed
+$ oc apply -k east/mesh-fed/east2
 -----
 
 
-. west:  Apply `ServiceMeshPeer` & `ExportedServiceSet`
+. east2:  Apply `ServiceMeshPeer` & `ExportedServiceSet`
 +
 -----
-$ oc apply -k west/mesh-fed
+$ oc apply -k east2/mesh-fed
 -----
 
 . ServiceMeshPeer status:
 +
 -----
-$ oc -n east-istio-system get servicemeshpeer west -o json | jq .status
-$ oc -n west-istio-system get servicemeshpeer east -o json | jq .status
+$ oc -n east-istio-system get servicemeshpeer east2 -o json | jq .status
+$ oc -n east2-istio-system get servicemeshpeer east -o json | jq .status
 -----
 +
 The status value for inbound (remotes[0].connected) and outbound (watch.connected) connections must be true. 
@@ -123,14 +129,16 @@ You can ignore the warning in the istiod logs for “remote trust domain not mat
 . ExportedServiceSet status:
 +
 -----
-$ oc get exportedserviceset east -n west-istio-system -o json | jq .status
+$ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
 -----
 
 . ImportedServiceSet status:
 +
 -----
-$ oc -n east-istio-system get importedservicesets west -o json | jq .status
+$ oc -n east-istio-system get importedservicesets east2 -o json | jq .status
 -----
+
+=== east - west
 
 == Traffic Mgmt Patterns
 
@@ -229,19 +237,26 @@ $ oc scale deploy/kube-info -n east-mesh-member --replicas=1
 
 == Deletion
 
+. east and east2
++
 -----
-$ oc delete -k west/mesh-fed/ --ignore-not-found=true \
-    && oc delete -k east/mesh-fed/ --ignore-not-found=true \
+$ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
+    && oc delete -k east/mesh-fed/east2 --ignore-not-found=true \
     && oc delete virtualservices -n east-mesh-member --all \
-    && oc delete virtualservices -n west-mesh-member --all \
-    && oc delete cm west-ca-root-cert -n east-istio-system --ignore-not-found=true \
-    && oc delete cm east-ca-root-cert -n west-istio-system --ignore-not-found=true \
+    && oc delete virtualservices -n east2-mesh-member --all \
+    && oc delete cm east2-ca-root-cert -n east-istio-system --ignore-not-found=true \
+    && oc delete cm east-ca-root-cert -n west2-istio-system --ignore-not-found=true \
     && oc delete -k east/app --ignore-not-found=true \
-    && oc delete -k west/app --ignore-not-found=true \
+    && oc delete -k east2/app --ignore-not-found=true \
     && oc delete -k east/mesh-cp --ignore-not-found=true \
-    && oc delete -k west/mesh-cp --ignore-not-found=true \
+    && oc delete -k east2/mesh-cp --ignore-not-found=true \
     && oc delete -k east/infra --ignore-not-found=true \
-    && oc delete -k west/infra --ignore-not-found=true
+    && oc delete -k east2/infra --ignore-not-found=true
+-----
+
+. west
++
+-----
 -----
 
 == Reference

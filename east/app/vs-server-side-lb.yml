@@ -22,8 +22,8 @@ spec:
       weight: 0
     - destination:
 
-        # oc -n east-istio-system get importedservicesets west -o json | jq -r .status.importedServices[].localService.hostname
-        host: kube-info-west.east-mesh-member.svc.west-imports.local
+        # oc -n east-istio-system get importedservicesets east2 -o json | jq -r .status.importedServices[].localService.hostname
+        host: kube-info-east2.east-mesh-member.svc.east2-imports.local
 
         port:
           number: 8080
