@@ -1,0 +1,9 @@
+apiVersion: maistra.io/v1
+kind: ServiceMeshMember
+metadata:
+  name: default
+  namespace: east2-mesh-member
+spec:
+  controlPlaneRef:
+    name: east2-fed
+    namespace: east2-istio-system

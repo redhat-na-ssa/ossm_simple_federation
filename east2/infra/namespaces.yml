@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    kubernetes.io/metadata.name: east2-istio-system
+  name: east2-istio-system
+spec:
+  finalizers:
+  - kubernetes
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    kubernetes.io/metadata.name: east2-mesh-member
+  name: east2-mesh-member
+spec:
+  finalizers:
+  - kubernetes

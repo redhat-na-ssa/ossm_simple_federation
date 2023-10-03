@@ -37,6 +37,28 @@ $ oc apply -k east/app
 $ curl -X GET http://$(oc get route istio-ingressgateway -n east-istio-system --template='{{.spec.host}}')/info
 -----
 
+=== East 2
+
+. Service Mesh Control Plane:
++
+-----
+$ oc apply -k east2/infra \
+  && oc apply -k east2/mesh-cp
+
+$ oc wait --for condition=Ready -n east2-istio-system smcp/east2-fed --timeout 300s
+-----
+
+. Application:
++
+-----
+$ oc apply -k east2/app
+
+
+$ curl -X GET http://$(oc get route istio-ingressgateway -n east2-istio-system --template='{{.spec.host}}')/info
+-----
+
+
+
 === West
 
 . Service Mesh Control Plane:
