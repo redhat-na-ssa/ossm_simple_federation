@@ -6,13 +6,33 @@ metadata:
 spec:
   host: "kube-info.east-mesh-member.svc.cluster.local"
   trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 1
+      http:
+        http2MaxRequests: 1
+        maxRequestsPerConnection: 10
     loadBalancer:
       localityLbSetting:
         enabled: true
         failover:
           - from: east-fed
-            to: west-fed
+            to: east2-fed
+          #- from: east2-fed
+          #  to: west-fed
     outlierDetection:
-      consecutive5xxErrors: 2
-      interval: 10s
+
+      # time interval between ejection analysis
+      # ie: service dependencies are verified every 10 seconds
+      interval: 2s
+
+      # # of errors before host is ejected from connection pool
+      consecutive5xxErrors: 1
+
+      # max ejection duration for a host
+      # ie: host will be ejected for 60 seconds before it is evaluated again for processing
       baseEjectionTime: 15s
+
+      # max percent of hosts that can be ejected from the load balanced pool. 
+      # ie, setting this field to 100 implies that any unhealthy pods throwing consecutive errors can be ejected and the request will be rerouted to the healthy pods.
+      maxEjectionPercent: 100

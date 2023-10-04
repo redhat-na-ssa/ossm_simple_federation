@@ -184,26 +184,28 @@ image::docs/images/simple-fed-failover.png[]
 . Clean existing mesh federation configs:
 +
 -----
-$ oc delete -k west/mesh-fed/ --ignore-not-found=true \
-    && oc delete -k east/mesh-fed/ --ignore-not-found=true \
+$ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
+    && oc delete -k east/mesh-fed/east2 --ignore-not-found=true \
     && oc delete virtualservices -n east-mesh-member --all \
-    && oc delete virtualservices -n west-mesh-member --all
+    && oc delete virtualservices -n east2-mesh-member --all
 -----
 
 . Configure mesh federation configs:
 +
 -----
-$ oc apply -k west/mesh-fed
-$ oc apply -f east/mesh-fed/servicemeshpeers.yml
-$ oc apply -f east/mesh-fed/importedserviceset-failover.yml
+$ oc apply -k east2/mesh-fed
+$ oc apply -f east/mesh-fed/east2/servicemeshpeers.yml
+$ oc apply -f east/mesh-fed/east2/importedserviceset-failover.yml
 -----
 
 . Check status of Exported/Import ServiceSets:
 +
 -----
-$ oc get exportedserviceset east -n west-istio-system -o json | jq .status
-$ oc -n east-istio-system get importedservicesets west -o json | jq .status
+$ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
+$ oc -n east-istio-system get importedservicesets east2 -o json | jq .status
 -----
++
+NOTE:  It might take istio a minute or two to reconcile the updated importedserviceset.  Until then, the importedserviceset will simply not report a status.
 
 . Scale down business app in east-mesh-member:
 +
