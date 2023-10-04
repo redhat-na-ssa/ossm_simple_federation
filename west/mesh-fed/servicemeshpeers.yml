@@ -8,8 +8,7 @@ spec:
 
   remote:
     addresses:
-    #- 192.168.1.201
-    - ingress-west.east-istio-system.svc.cluster.local
+    - 192.168.1.201
     discoveryPort: 8188
     servicePort: 15443
     

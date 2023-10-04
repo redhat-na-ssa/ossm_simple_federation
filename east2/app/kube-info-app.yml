@@ -46,7 +46,7 @@ spec:
                   fieldPath: metadata.namespace
 
           # https://github.com/jbride/pocs/tree/master/quarkus/kube-info
-          image: quay.io/jbride/kube-info:0.0.2
+          image: quay.io/jbride/kube-info:0.0.3
 
           imagePullPolicy: Always
           name: kube-info

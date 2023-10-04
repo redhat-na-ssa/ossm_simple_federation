@@ -10,6 +10,8 @@ spec:
    #  creates a combined set of endpoints that includes both a local service and remote service
    #  the domain suffix will be svc.cluster.local, like your normal local services. 
    #  if you already have a local service with this name, the remote endpoint will be added to this service’s endpoints and you load balance across your local and imported services
+   #
+   #  TO-DO:  Research how to view list of endpoints when this flag is set to true
    - importAsLocal: true
 
      nameSelector:

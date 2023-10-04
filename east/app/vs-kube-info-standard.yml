@@ -13,6 +13,8 @@ spec:
   - match:
     - uri:
         prefix: /info
+    - uri:
+        prefix: /switch503flag
     route:
     - destination:
         host: kube-info

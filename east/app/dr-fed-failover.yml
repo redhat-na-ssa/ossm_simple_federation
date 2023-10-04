@@ -8,26 +8,29 @@ spec:
   trafficPolicy:
     connectionPool:
       tcp:
-        maxConnections: 1
+        maxConnections: 5
       http:
-        http2MaxRequests: 1
-        maxRequestsPerConnection: 10
+        http2MaxRequests: 5
+        maxRequestsPerConnection: 5
     loadBalancer:
+
       localityLbSetting:
         enabled: true
         failover:
           - from: east-fed
             to: east2-fed
-          #- from: east2-fed
-          #  to: west-fed
+          - from: east2-fed
+            to: west-fed
+
     outlierDetection:
 
       # time interval between ejection analysis
       # ie: service dependencies are verified every 10 seconds
-      interval: 2s
+      interval: 10s
 
       # # of errors before host is ejected from connection pool
       consecutive5xxErrors: 1
+      consecutiveGatewayErrors: 1
 
       # max ejection duration for a host
       # ie: host will be ejected for 60 seconds before it is evaluated again for processing

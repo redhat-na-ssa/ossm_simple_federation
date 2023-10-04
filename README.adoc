@@ -9,7 +9,9 @@
 
 == Set-up
 
+=== Initial Architecture
 
+image::docs/images/simple-fed-setup.png[]
 
 === Common
 
@@ -19,7 +21,7 @@ $ oc apply -k infra
 
 === East - East2
 
-image::docs/images/simple-fed-setup.png[]
+
 
 ==== East
 
@@ -85,6 +87,8 @@ $ curl -X GET http://$(oc get route istio-ingressgateway -n west-istio-system --
 
 == Federation:
 
+image::docs/images/base-federation-topology.png[]
+
 === east - east2
 
 . Share istio root certificates between mesh tenants:
@@ -98,27 +102,42 @@ $ oc get cm istio-ca-root-cert -n east-istio-system -o yaml \
     | sed 's/namespace: .*/namespace: east2-istio-system/' \
     | sed 's/name: .*/name: east-ca-root-cert/' | oc apply -n east2-istio-system -f -
 -----
-+
-NOTE: Alternative approach described in Appendix section.
-
-. east:  Apply `ServiceMeshPeer` & `ImportedServiceSet`
-+
------
-$ oc apply -k east/mesh-fed/east2
------
 
 
-. east2:  Apply `ServiceMeshPeer` & `ExportedServiceSet`
+. east2:  
+
+.. Apply `ServiceMeshPeer` & `ExportedServiceSet`
 +
 -----
 $ oc apply -k east2/mesh-fed
 -----
 
-. ServiceMeshPeer status:
+.. ServiceMeshPeer status:
++
+-----
+$ oc -n east2-istio-system get servicemeshpeer east -o json | jq .status
+-----
+
+.. ExportedServiceSet status:
++
+-----
+$ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
+-----
+
+
+
+. east:  
+
+.. Apply `ServiceMeshPeer` & `ImportedServiceSet`
++
+-----
+$ oc apply -k east/mesh-fed/east2
+-----
+
+.. ServiceMeshPeer status:
 +
 -----
 $ oc -n east-istio-system get servicemeshpeer east2 -o json | jq .status
-$ oc -n east2-istio-system get servicemeshpeer east -o json | jq .status
 -----
 +
 The status value for inbound (remotes[0].connected) and outbound (watch.connected) connections must be true. 
@@ -126,19 +145,97 @@ It may take a moment as the full synchronization happens every 5 minutes.
 If you don’t see a successful connection status for a while, check the logs of the istiod pod. 
 You can ignore the warning in the istiod logs for “remote trust domain not matching the current trust domain…”.
 
-. ExportedServiceSet status:
-+
------
-$ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
------
-
-. ImportedServiceSet status:
+.. ImportedServiceSet status:
 +
 -----
 $ oc -n east-istio-system get importedservicesets east2 -o json | jq .status
 -----
 
 === east - west
+
+. Swapping CA Root certificates
+
+.. Optional: Rename configs:
++
+-----
+$ oc config rename-context east-istio-system/api-den-east-ratwater-xyz:6443/system:admin east-istio
+$ oc config rename-context west-istio-system/api-den-west-ratwater-xyz:6443/kube:admin west-istio
+-----
+
+.. East cert to west:
++
+-----
+$ oc config use-context east-istio
+$ EAST_MESH_CERT=$(oc get configmap -n east-istio-system istio-ca-root-cert -o jsonpath='{.data.root-cert\.pem}')
+$ echo "$EAST_MESH_CERT" | openssl x509 -subject -noout
+
+$ oc config use-context west-istio
+$ oc create configmap east-ca-root-cert --from-literal=root-cert.pem="$EAST_MESH_CERT" -n west-istio-system
+-----
+
+.. West cert to east:
++
+-----
+$ oc config use-context west-istio
+$ WEST_MESH_CERT=$(oc get configmap -n west-istio-system istio-ca-root-cert -o jsonpath='{.data.root-cert\.pem}')
+$ echo "$WEST_MESH_CERT" | openssl x509 -subject -noout
+
+$ oc config use-context east-istio
+$ oc create configmap west-ca-root-cert --from-literal=root-cert.pem="$WEST_MESH_CERT" -n east-istio-system
+-----
+
+. west:  
+.. Apply `ServiceMeshPeer` & `ExportedServiceSet`
++
+-----
+$ oc apply -k west/mesh-fed
+-----
+
+.. ServiceMeshPeer status:
++
+-----
+$ oc -n west-istio-system get servicemeshpeer east -o json | jq .status
+-----
+
+.. ExportedServiceSet status:
++
+-----
+$ oc get exportedserviceset east -n west-istio-system -o json | jq .status
+-----
+
+. east:  
+
+.. Apply `ServiceMeshPeer` & `ImportedServiceSet`
++
+-----
+$ oc apply -k east/mesh-fed/west
+-----
+
+.. ServiceMeshPeer status:
++
+-----
+$ oc -n east-istio-system get servicemeshpeer west -o json | jq .status
+-----
++
+The status value for inbound (remotes[0].connected) and outbound (watch.connected) connections must be true. 
+It may take a moment as the full synchronization happens every 5 minutes. 
+If you don’t see a successful connection status for a while, check the logs of the istiod pod. 
+You can ignore the warning in the istiod logs for “remote trust domain not matching the current trust domain…”.
+
+.. ImportedServiceSet status:
++
+-----
+$ oc -n east-istio-system get importedservicesets west -o json | jq .status
+-----
+
+
+
+
+
+
+
+
+
 
 == Traffic Mgmt Patterns
 
@@ -179,7 +276,13 @@ $ for i in {1..10}
 
 === Federated Mesh Fail-over
 
+==== Overview
+
 image::docs/images/simple-fed-failover.png[]
+
+Istio detects faulty instances, or outliers. In the Istio lexicon this is known as outlier detection. The strategy is to first detect an outlier container and then make it unavailable for a pre-configured duration, or what's called a sleep window. While the container is in the sleep window, it is excluded from any routing or load balancing. An analogy would be front porch lights on Halloween night: If the light is off, the house isn't participating, for whatever reason. You can skip it and save time, visiting only the active houses. If the homeowner arrives home 30 minutes later and turns on the porch light, go get some candy.
+
+==== Setup
 
 . Clean existing mesh federation configs:
 +
@@ -191,9 +294,20 @@ $ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
 -----
 
 . Configure mesh federation configs:
+
+.. east2:
 +
 -----
 $ oc apply -k east2/mesh-fed
+-----
++
+-----
+$ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
+-----
+
+.. east:
++
+-----
 $ oc apply -f east/mesh-fed/east2/servicemeshpeers.yml
 $ oc apply -f east/mesh-fed/east2/importedserviceset-failover.yml
 -----
@@ -223,10 +337,10 @@ $ oc apply -f east/app/dr-fed-failover.yml
 . Test:
 +
 -----
-$ for i in {1..20}
+$ for i in {1..100}
   do
     curl -X GET http://$(oc get route istio-ingressgateway -n east-istio-system --template='{{.spec.host}}')/info;
-    sleep 10;
+    sleep 2;
   done
 -----
 
@@ -244,9 +358,11 @@ $ oc scale deploy/kube-info -n east-mesh-member --replicas=1
 -----
 $ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
     && oc delete -k east/mesh-fed/east2 --ignore-not-found=true \
+    && oc delete -k east/mesh-fed/west --ignore-not-found=true \
     && oc delete virtualservices -n east-mesh-member --all \
     && oc delete virtualservices -n east2-mesh-member --all \
     && oc delete cm east2-ca-root-cert -n east-istio-system --ignore-not-found=true \
+    && oc delete cm west-ca-root-cert -n east-istio-system --ignore-not-found=true \
     && oc delete cm east-ca-root-cert -n west2-istio-system --ignore-not-found=true \
     && oc delete -k east/app --ignore-not-found=true \
     && oc delete -k east2/app --ignore-not-found=true \
@@ -259,6 +375,11 @@ $ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
 . west
 +
 -----
+$ oc delete -k west/mesh-fed --ignore-not-found=true \
+    && oc delete cm --all -n west-istio-mesh \
+    && oc delete -k west/app --ignore-not-found=true \
+    && oc delete -k west/mesh-cp --ignore-not-found=true \
+    && oc delete -k west/infra --ignore-not-found=true
 -----
 
 == Reference
@@ -270,13 +391,14 @@ $ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
 
 == Appendix
 
-=== Swapping CA Root certificates
+=== Troubleshooting
 
+. The following does not return anything:
++
 -----
-$ oc config use-context aro
-$ ARO_STG_MESH_CERT=$(oc get configmap -n aro-stg-mesh istio-ca-root-cert -o jsonpath='{.data.root-cert\.pem}')
-$ echo "$ARO_STG_MESH_CERT" | openssl x509 -subject -noout
+$ oc -n east-istio-system exec istio-ingressgateway-5f9dbfd7c6-qx7g4  -- curl localhost:15000/stats | grep outlier
+-----
 
-$ oc config use-context rosa
-$ oc create configmap aro-stg-mesh-ca-root-cert --from-literal=root-cert.pem="$ARO_STG_MESH_CERT" -n rosa-prod-mesh
------
+
+
+
