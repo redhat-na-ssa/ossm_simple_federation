@@ -13,6 +13,22 @@
 
 image::docs/images/simple-fed-setup.png[]
 
+The diagram above depicts two OCP clusters with one or more OSSM control planes.
+Each ServiceMeshControlPlane is configured with `additional ingress` and `additional egress` gateways.
+Each addition ingress/egress has a corresponding unique service account.
+Those SAs serve as the `clientId` when defining `ServiceMeshPeers`.
+
+From the perspective of external meshes, all that is known is the clientId of the additional ingress/egress gateways.
+
+=== OCP Cluster Setup
+
+.. Rename OCP config names for each cluster (similar to the following):
++
+-----
+$ oc config rename-context east-istio-system/api-den-east-ratwater-xyz:6443/system:admin east-istio
+$ oc config rename-context west-istio-system/api-den-west-ratwater-xyz:6443/kube:admin west-istio
+-----
+
 === OSSM Related Operators
 
 -----
@@ -150,33 +166,26 @@ $ oc -n east-istio-system get importedservicesets east2 -o json | jq .status
 
 . Swapping CA Root certificates
 
-.. Optional: Rename configs:
-+
------
-$ oc config rename-context east-istio-system/api-den-east-ratwater-xyz:6443/system:admin east-istio
-$ oc config rename-context west-istio-system/api-den-west-ratwater-xyz:6443/kube:admin west-istio
------
-
 .. East cert to west:
 +
 -----
-$ oc config use-context east-istio
-$ EAST_MESH_CERT=$(oc get configmap -n east-istio-system istio-ca-root-cert -o jsonpath='{.data.root-cert\.pem}')
+$ oc config use-context east-istio \
+    && EAST_MESH_CERT=$(oc get configmap -n east-istio-system istio-ca-root-cert -o jsonpath='{.data.root-cert\.pem}')
 $ echo "$EAST_MESH_CERT" | openssl x509 -subject -noout
 
-$ oc config use-context west-istio
-$ oc create configmap east-ca-root-cert --from-literal=root-cert.pem="$EAST_MESH_CERT" -n west-istio-system
+$ oc config use-context west-istio \
+    && oc create configmap east-ca-root-cert --from-literal=root-cert.pem="$EAST_MESH_CERT" -n west-istio-system
 -----
 
 .. West cert to east:
 +
 -----
-$ oc config use-context west-istio
-$ WEST_MESH_CERT=$(oc get configmap -n west-istio-system istio-ca-root-cert -o jsonpath='{.data.root-cert\.pem}')
+$ oc config use-context west-istio \
+    && WEST_MESH_CERT=$(oc get configmap -n west-istio-system istio-ca-root-cert -o jsonpath='{.data.root-cert\.pem}')
 $ echo "$WEST_MESH_CERT" | openssl x509 -subject -noout
 
-$ oc config use-context east-istio
-$ oc create configmap west-ca-root-cert --from-literal=root-cert.pem="$WEST_MESH_CERT" -n east-istio-system
+$ oc config use-context east-istio \
+    && oc create configmap west-ca-root-cert --from-literal=root-cert.pem="$WEST_MESH_CERT" -n east-istio-system
 -----
 
 . *west*:  Apply `ServiceMeshPeer` & `ExportedServiceSet`
@@ -207,8 +216,6 @@ $ oc config use-context west-istio \
 -----
 $ oc get exportedserviceset east -n west-istio-system -o json | jq .status
 -----
-
- 
 
 . *east*: check statuses:
 .. ServiceMeshPeer status:
@@ -332,7 +339,8 @@ $ oc scale deploy/kube-info -n east-mesh-member --replicas=1
 . east and east2
 +
 -----
-$ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
+$ oc config use-context east-istio \
+    && oc delete -k east2/mesh-fed/ --ignore-not-found=true \
     && oc delete -k east/mesh-fed/east2 --ignore-not-found=true \
     && oc delete -k east/mesh-fed/west --ignore-not-found=true \
     && oc delete virtualservices -n east-mesh-member --all \
@@ -350,7 +358,8 @@ $ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
 . west
 +
 -----
-$ oc delete -k west/mesh-fed --ignore-not-found=true \
+$ oc config use-context west-istio \
+    && oc delete -k west/mesh-fed --ignore-not-found=true \
     && oc delete cm east-ca-root-cert -n west2-istio-system --ignore-not-found=true \
     && oc delete -k west/app --ignore-not-found=true \
     && oc delete -k west/mesh-cp --ignore-not-found=true \
@@ -360,7 +369,15 @@ $ oc delete -k west/mesh-fed --ignore-not-found=true \
 . Optional:  purge OSSM operators
 +
 -----
-$ oc delete -k infra
+$ oc delete -k infra --ignore-not-found=true \
+  && oc delete validatingwebhookconfiguration openshift-operators.servicemesh-resources.maistra.io \
+  && oc -n openshift-operators delete sa istio-cni istio-operator kiali-operator ossm-cni
+-----
+
+.Optional:  Ensure all Istio related CSVs are deleted:
++
+-----
+$ oc get csv -n openshift-operators
 -----
 
 
@@ -369,7 +386,8 @@ $ oc delete -k infra
 . east and east2
 +
 -----
-$ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
+$ oc config use-context east-istio \
+    && oc delete -k east2/mesh-fed/ --ignore-not-found=true \
     && oc delete -k east/mesh-fed/east2 --ignore-not-found=true \
     && oc delete -k east/mesh-fed/west --ignore-not-found=true \
     && oc delete virtualservices -n east-mesh-member --all \
@@ -383,7 +401,8 @@ $ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
 . west
 +
 -----
-$ oc delete -k west/mesh-fed --ignore-not-found=true \
+$ oc config use-context west-istio \
+    && oc delete -k west/mesh-fed --ignore-not-found=true \
     && oc delete cm east-ca-root-cert -n west-istio-system --ignore-not-found=true
 -----
 
