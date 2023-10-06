@@ -371,8 +371,25 @@ $ oc config use-context west-istio \
 -----
 $ oc delete -k infra --ignore-not-found=true \
   && oc delete validatingwebhookconfiguration openshift-operators.servicemesh-resources.maistra.io \
-  && oc -n openshift-operators delete sa istio-cni istio-operator kiali-operator ossm-cni
+  && oc -n openshift-operators delete sa istio-cni istio-operator kiali-operator ossm-cni \
+  && oc -n openshift-operators delete cm istio-ca-root-cert istio-cni-config maistra-operator-cabundle ossm-cni-config-v2-4 \
+  && oc delete ClusterRoleBinding istio-cni istio-cni-repair-rolebinding \
+  && oc delete daemonset istio-cni-node istio-cni-node-v2-4 \
+  && oc delete NetworkAttachmentDefinition.k8s.cni.cncf.io istio-cni -n default
 -----
++
+-----
+$ for i in  $(oc get ClusterRole | grep 'maistra\|istio' | awk '{print $1;}') 
+  do
+    oc delete ClusterRole $i
+  done
+-----
++
+-----
+$ for i in  $(oc get ClusterRoleBinding | grep 'maistra\|istio' | awk '{print $1;}') 
+  do
+    oc delete ClusterRoleBinding $i
+  done
 
 .Optional:  Ensure all Istio related CSVs are deleted:
 +
