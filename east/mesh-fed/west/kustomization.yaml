@@ -5,4 +5,7 @@ commonAnnotations:
 resources:
 
 - servicemeshpeers.yml
+
+# Change to importedserviceset.yml if target traffic pattern is:  mirror or server-side load-balancing
+#- importedserviceset.yml
 - importedserviceset-failover.yml

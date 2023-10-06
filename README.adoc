@@ -13,17 +13,15 @@
 
 image::docs/images/simple-fed-setup.png[]
 
-=== Common
+=== OSSM Related Operators
 
 -----
 $ oc apply -k infra
 -----
 
-=== East - East2
 
 
-
-==== East
+=== east
 
 . Service Mesh Control Plane:
 +
@@ -43,7 +41,7 @@ $ oc apply -k east/app
 $ curl -X GET http://$(oc get route istio-ingressgateway -n east-istio-system --template='{{.spec.host}}')/info
 -----
 
-==== East2
+=== east2
 
 . Service Mesh Control Plane:
 +
@@ -65,7 +63,7 @@ $ curl -X GET http://$(oc get route istio-ingressgateway -n east2-istio-system -
 
 
 
-=== West
+=== west
 
 . Service Mesh Control Plane:
 +
@@ -104,13 +102,19 @@ $ oc get cm istio-ca-root-cert -n east-istio-system -o yaml \
 -----
 
 
-. east2:  
-
-.. Apply `ServiceMeshPeer` & `ExportedServiceSet`
+. east2:  Apply `ServiceMeshPeer` & `ExportedServiceSet`
 +
 -----
 $ oc apply -k east2/mesh-fed
 -----
+
+. east:  Apply `ServiceMeshPeer` & `ImportedServiceSet`
++
+-----
+$ oc apply -k east/mesh-fed/east2
+-----
+
+. east2:  Check Statuses:
 
 .. ServiceMeshPeer status:
 +
@@ -124,16 +128,7 @@ $ oc -n east2-istio-system get servicemeshpeer east -o json | jq .status
 $ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
 -----
 
-
-
-. east:  
-
-.. Apply `ServiceMeshPeer` & `ImportedServiceSet`
-+
------
-$ oc apply -k east/mesh-fed/east2
------
-
+. east:  Check Statuses:
 .. ServiceMeshPeer status:
 +
 -----
@@ -184,17 +179,27 @@ $ oc config use-context east-istio
 $ oc create configmap west-ca-root-cert --from-literal=root-cert.pem="$WEST_MESH_CERT" -n east-istio-system
 -----
 
-. west:  
-.. Apply `ServiceMeshPeer` & `ExportedServiceSet`
+. *west*:  Apply `ServiceMeshPeer` & `ExportedServiceSet`
 +
 -----
-$ oc apply -k west/mesh-fed
+$ oc config use-context west-istio \
+    && oc apply -k west/mesh-fed
 -----
+
+. *east*:  Apply `ServiceMeshPeer` & `ImportedServiceSet`
++
+-----
+$ oc config use-context east-istio \
+    && oc apply -k east/mesh-fed/west
+-----
+
+. *west*: check statuses:
 
 .. ServiceMeshPeer status:
 +
 -----
-$ oc -n west-istio-system get servicemeshpeer east -o json | jq .status
+$ oc config use-context west-istio \
+    && oc -n west-istio-system get servicemeshpeer east -o json | jq .status
 -----
 
 .. ExportedServiceSet status:
@@ -203,18 +208,14 @@ $ oc -n west-istio-system get servicemeshpeer east -o json | jq .status
 $ oc get exportedserviceset east -n west-istio-system -o json | jq .status
 -----
 
-. east:  
+ 
 
-.. Apply `ServiceMeshPeer` & `ImportedServiceSet`
-+
------
-$ oc apply -k east/mesh-fed/west
------
-
+. *east*: check statuses:
 .. ServiceMeshPeer status:
 +
 -----
-$ oc -n east-istio-system get servicemeshpeer west -o json | jq .status
+$ oc config use-context east-istio \
+    && oc -n east-istio-system get servicemeshpeer west -o json | jq .status
 -----
 +
 The status value for inbound (remotes[0].connected) and outbound (watch.connected) connections must be true. 
@@ -227,11 +228,8 @@ You can ignore the warning in the istiod logs for “remote trust domain not mat
 -----
 $ oc -n east-istio-system get importedservicesets west -o json | jq .status
 -----
-
-
-
-
-
++
+NOTE:  It might take istio a minute or two to reconcile the updated importedserviceset.  Until then, the importedserviceset will simply not report a status.
 
 
 
@@ -243,6 +241,8 @@ $ oc -n east-istio-system get importedservicesets west -o json | jq .status
 === Mirror
 
 image::docs/images/simple-fed-mirror.png[]
+
+NOTE:  check comments in east/mesh-fed/west/kustomization.yml  and east/mesh-fed/east2/kustomization.yml
 
 -----
 $ oc delete virtualservice --all -n east-mesh-member
@@ -261,6 +261,8 @@ $ for i in {1..10}
 === Server Side Loadbalancing
 
 image::docs/images/simple-fed-server-side-lb.png[]
+
+NOTE:  check comments in east/mesh-fed/west/kustomization.yml  and east/mesh-fed/east2/kustomization.yml
 
 -----
 $ oc delete virtualservice --all -n east-mesh-member
@@ -284,53 +286,24 @@ Istio detects faulty instances, or outliers. In the Istio lexicon this is known 
 
 ==== Setup
 
-. Clean existing mesh federation configs:
-+
------
-$ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
-    && oc delete -k east/mesh-fed/east2 --ignore-not-found=true \
-    && oc delete virtualservices -n east-mesh-member --all \
-    && oc delete virtualservices -n east2-mesh-member --all
------
 
-. Configure mesh federation configs:
-
-.. east2:
-+
------
-$ oc apply -k east2/mesh-fed
------
-+
------
-$ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
------
-
-.. east:
-+
------
-$ oc apply -f east/mesh-fed/east2/servicemeshpeers.yml
-$ oc apply -f east/mesh-fed/east2/importedserviceset-failover.yml
------
-
-. Check status of Exported/Import ServiceSets:
-+
------
-$ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
-$ oc -n east-istio-system get importedservicesets east2 -o json | jq .status
------
-+
-NOTE:  It might take istio a minute or two to reconcile the updated importedserviceset.  Until then, the importedserviceset will simply not report a status.
-
-. Scale down business app in east-mesh-member:
+. east-mesh-member: Scale down business app:
 +
 -----
 $ oc scale deploy/kube-info -n east-mesh-member --replicas=0
+-----
+
+. east2-mesh-member: Scale down business app:
++
+-----
+$ oc scale deploy/kube-info -n east2-mesh-member --replicas=0
 -----
 
 . Configure VirtualService and `outlierDetection` enabled DestinationRule:
 +
 -----
 $ oc apply -f east/app/vs-kube-info-standard.yml
+$ oc apply -f east2/app/vs-kube-info-standard.yml
 $ oc apply -f east/app/dr-fed-failover.yml
 -----
 
@@ -344,14 +317,17 @@ $ for i in {1..100}
   done
 -----
 
-. Scale up business app in east-mesh-member:
+. Scale up business app in east2/east-mesh-member:
 +
 -----
+$ oc scale deploy/kube-info -n east2-mesh-member --replicas=1
 $ oc scale deploy/kube-info -n east-mesh-member --replicas=1
 -----
 
 
 == Deletion
+
+=== All
 
 . east and east2
 +
@@ -363,7 +339,6 @@ $ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
     && oc delete virtualservices -n east2-mesh-member --all \
     && oc delete cm east2-ca-root-cert -n east-istio-system --ignore-not-found=true \
     && oc delete cm west-ca-root-cert -n east-istio-system --ignore-not-found=true \
-    && oc delete cm east-ca-root-cert -n west2-istio-system --ignore-not-found=true \
     && oc delete -k east/app --ignore-not-found=true \
     && oc delete -k east2/app --ignore-not-found=true \
     && oc delete -k east/mesh-cp --ignore-not-found=true \
@@ -376,10 +351,40 @@ $ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
 +
 -----
 $ oc delete -k west/mesh-fed --ignore-not-found=true \
-    && oc delete cm --all -n west-istio-mesh \
+    && oc delete cm east-ca-root-cert -n west2-istio-system --ignore-not-found=true \
     && oc delete -k west/app --ignore-not-found=true \
     && oc delete -k west/mesh-cp --ignore-not-found=true \
     && oc delete -k west/infra --ignore-not-found=true
+-----
+
+. Optional:  purge OSSM operators
++
+-----
+$ oc delete -k infra
+-----
+
+
+=== Reset to base OSSM setup
+
+. east and east2
++
+-----
+$ oc delete -k east2/mesh-fed/ --ignore-not-found=true \
+    && oc delete -k east/mesh-fed/east2 --ignore-not-found=true \
+    && oc delete -k east/mesh-fed/west --ignore-not-found=true \
+    && oc delete virtualservices -n east-mesh-member --all \
+    && oc delete virtualservices -n east2-mesh-member --all \
+    && oc delete cm east-ca-root-cert -n east2-istio-system --ignore-not-found=true \
+    && oc delete cm east2-ca-root-cert -n east-istio-system --ignore-not-found=true \
+    && oc delete cm west-ca-root-cert -n east-istio-system --ignore-not-found=true \
+    && oc delete destinationrules -n east-mesh-member --all
+-----
+
+. west
++
+-----
+$ oc delete -k west/mesh-fed --ignore-not-found=true \
+    && oc delete cm east-ca-root-cert -n west-istio-system --ignore-not-found=true
 -----
 
 == Reference
