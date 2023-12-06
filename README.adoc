@@ -390,13 +390,13 @@ $ for i in  $(oc get ClusterRoleBinding | grep 'maistra\|istio' | awk '{print $1
   do
     oc delete ClusterRoleBinding $i
   done
+-----
 
-.Optional:  Ensure all Istio related CSVs are deleted:
+. Optional:  Ensure all Istio related CSVs are deleted:
 +
 -----
 $ oc get csv -n openshift-operators
 -----
-
 
 === Reset to base OSSM setup
 
