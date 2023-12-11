@@ -20,24 +20,28 @@ Those SAs serve as the `clientId` when defining `ServiceMeshPeers`.
 
 From the perspective of external meshes, all that is known is the clientId of the additional ingress/egress gateways.
 
-=== OCP Cluster Setup
+=== Pre-Reqs
 
-.. Rename OCP config names for each cluster (similar to the following):
+This lab is designed to work in a set-up involving two OpenShift 4.13 (or more recent) clusters.  Via the `oc` utility, you should have _cluster-admin_ access to each of these clusters.
+
+Your clusters can reside anywhere (ie: on-prem and/or in the cloud).
+However, one consideration is that your OpenShift clusters should all be enabled with an implementation of the_LoadBalancer_ type of Kubernetes service.
+ie:  _metallb_ if clusters are on-prem.
+
+
+=== OSSM Operators
+
+. Execute the following on all OpenShift clusters (ie:  _east_ and _west_ )
 +
------
-$ oc config rename-context east-istio-system/api-den-east-ratwater-xyz:6443/system:admin east-istio
-$ oc config rename-context west-istio-system/api-den-west-ratwater-xyz:6443/kube:admin west-istio
------
-
-=== OSSM Related Operators
-
 -----
 $ oc apply -k infra
 -----
 
+Doing so install Red Hat OpenShift Service Mesh (OSSM).
 
+=== OSSM Control Planes
 
-=== east
+==== east
 
 . Service Mesh Control Plane:
 +
@@ -57,7 +61,7 @@ $ oc apply -k east/app
 $ curl -X GET http://$(oc get route istio-ingressgateway -n east-istio-system --template='{{.spec.host}}')/info
 -----
 
-=== east2
+==== east2
 
 . Service Mesh Control Plane:
 +
@@ -77,9 +81,7 @@ $ oc apply -k east2/app
 $ curl -X GET http://$(oc get route istio-ingressgateway -n east2-istio-system --template='{{.spec.host}}')/info
 -----
 
-
-
-=== west
+==== west
 
 . Service Mesh Control Plane:
 +
@@ -103,16 +105,28 @@ $ curl -X GET http://$(oc get route istio-ingressgateway -n west-istio-system --
 
 image::docs/images/base-federation-topology.png[]
 
+=== OC Config Utility Setup
+
+.. Rename OCP config names for each cluster (similar to the following):
++
+-----
+$ oc config rename-context east-istio-system/api-den-east-ratwater-xyz:6443/system:admin east-istio
+$ oc config rename-context west-istio-system/api-den-west-ratwater-xyz:6443/system:admin west-istio
+-----
+
+
 === east - east2
 
 . Share istio root certificates between mesh tenants:
 +
 -----
-$ oc get cm istio-ca-root-cert -n east2-istio-system -o yaml \
+$ oc config use-context east-istio \
+    && oc get cm istio-ca-root-cert -n east2-istio-system -o yaml \
     | sed 's/namespace: .*/namespace: east-istio-system/' \
     | sed 's/name: .*/name: east2-ca-root-cert/' | oc apply -n east-istio-system -f -
 
-$ oc get cm istio-ca-root-cert -n east-istio-system -o yaml \
+$ oc config use-context east-istio \
+    && oc get cm istio-ca-root-cert -n east-istio-system -o yaml \
     | sed 's/namespace: .*/namespace: east2-istio-system/' \
     | sed 's/name: .*/name: east-ca-root-cert/' | oc apply -n east2-istio-system -f -
 -----
@@ -121,13 +135,15 @@ $ oc get cm istio-ca-root-cert -n east-istio-system -o yaml \
 . east2:  Apply `ServiceMeshPeer` & `ExportedServiceSet`
 +
 -----
-$ oc apply -k east2/mesh-fed
+$ oc config use-context east-istio \
+    && oc apply -k east2/mesh-fed
 -----
 
 . east:  Apply `ServiceMeshPeer` & `ImportedServiceSet`
 +
 -----
-$ oc apply -k east/mesh-fed/east2
+$ oc config use-context east-istio \
+    && oc apply -k east/mesh-fed/east2
 -----
 
 . east2:  Check Statuses:
@@ -135,20 +151,23 @@ $ oc apply -k east/mesh-fed/east2
 .. ServiceMeshPeer status:
 +
 -----
-$ oc -n east2-istio-system get servicemeshpeer east -o json | jq .status
+$ oc config use-context east-istio \
+    && oc -n east2-istio-system get servicemeshpeer east -o json | jq .status
 -----
 
 .. ExportedServiceSet status:
 +
 -----
-$ oc get exportedserviceset east -n east2-istio-system -o json | jq .status
+$ oc config use-context east-istio \
+    && oc get exportedserviceset east -n east2-istio-system -o json | jq .status
 -----
 
 . east:  Check Statuses:
 .. ServiceMeshPeer status:
 +
 -----
-$ oc -n east-istio-system get servicemeshpeer east2 -o json | jq .status
+$ oc config use-context east-istio \
+    && oc -n east-istio-system get servicemeshpeer east2 -o json | jq .status
 -----
 +
 The status value for inbound (remotes[0].connected) and outbound (watch.connected) connections must be true. 
@@ -159,7 +178,8 @@ You can ignore the warning in the istiod logs for “remote trust domain not mat
 .. ImportedServiceSet status:
 +
 -----
-$ oc -n east-istio-system get importedservicesets east2 -o json | jq .status
+$ oc config use-context east-istio \
+    && oc -n east-istio-system get importedservicesets east2 -o json | jq .status
 -----
 
 === east - west
